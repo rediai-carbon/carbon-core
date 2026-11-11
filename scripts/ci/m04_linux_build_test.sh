@@ -17,9 +17,13 @@ fi
 export VCPKG_ROOT="${WORK_ROOT}/writable/vcpkg"
 export PATH_TO_VCPKG_ROOT="${VCPKG_ROOT}"
 
+INSTALL_ROOT="${WORK_ROOT}/build/carbon-core/vcpkg_installed"
+mkdir -p "${INSTALL_ROOT}"
+
 "${VCPKG_ROOT}/vcpkg" install \
   --triplet x64-linux-release \
   --x-manifest-root="${SRC_ROOT}" \
+  --x-install-root="${INSTALL_ROOT}" \
   --feature-flags=manifests,versions \
   2>&1 | tee "${WORK_ROOT}/logs/carbon-core-vcpkg-install.log"
 
@@ -33,6 +37,7 @@ cmake -G Ninja -S "${SRC_ROOT}" -B "${WORK_ROOT}/build/carbon-core" \
   -DVCPKG_USE_HOST_TOOLS=ON \
   -DWITH_TELEMETRY=OFF \
   -DBUILD_DOCUMENTATION=OFF \
+  -DVCPKG_INSTALLED_DIR="${INSTALL_ROOT}" \
   2>&1 | tee "${WORK_ROOT}/logs/carbon-core-configure.log"
 
 cmake --build "${WORK_ROOT}/build/carbon-core" -j "$(nproc)" \
