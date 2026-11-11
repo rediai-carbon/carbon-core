@@ -54,7 +54,7 @@ jobs:
             -v m04_core_workspace:/m04 \
             -e WORK_ROOT=/m04 \
             carbon-linux-gcc-buildenv:m04-ci \
-            bash -lc 'chmod +x /src/carbon-core/scripts/ci/m04_linux_build_test.sh && /src/carbon-core/scripts/ci/m04_linux_build_test.sh'
+            bash /src/carbon-core/scripts/ci/m04_linux_build_test.sh
       - name: Note reproducibility
         run: |
           echo "M01-fingerprint target digest ${M01_IMAGE_DIGEST} (reference); this job builds from carbon-linux-images @ ${CARBON_LINUX_IMAGES_SHA}."
