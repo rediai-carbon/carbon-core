@@ -29,6 +29,9 @@ endif()
 project(CcpCore)
 
 set(CCP_TOOLSET ${CMAKE_GENERATOR_TOOLSET})
+if(NOT CCP_TOOLSET AND MSVC_TOOLSET_VERSION)
+    set(CCP_TOOLSET "v${MSVC_TOOLSET_VERSION}")
+endif()
 
 include(GenerateExportHeader)
 
@@ -163,6 +166,7 @@ target_compile_definitions(CcpCore PUBLIC CCP_ASSERT_ENABLED=$<NOT:$<CONFIG:Rele
 if(WIN32)
     # Prevent min/max macros being defined (in windows.h) that conflict with std::min/max ones.
     target_compile_definitions(CcpCore PRIVATE NOMINMAX)
+    target_link_libraries(CcpCore PRIVATE shlwapi)
 endif()
 
 target_include_directories(CcpCore

@@ -14,7 +14,7 @@
 	#include <windows.h>
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && __has_include(<atlbase.h>)
 	#include <atlbase.h>
 #endif
 
