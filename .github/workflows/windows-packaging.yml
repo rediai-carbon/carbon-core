@@ -1,0 +1,38 @@
+name: windows-packaging
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  telemetry-config-matrix:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: OFF install package config
+        shell: pwsh
+        run: |
+          cmake -S . -B build-off -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX=prefix-off -DWITH_TELEMETRY=OFF `
+            -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON `
+            -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DVCPKG_MANIFEST_MODE=OFF
+          cmake --build build-off --target install
+          $cfg = Get-Content prefix-off/share/carbon-core/carbon-coreConfig.cmake -Raw
+          if ($cfg -match 'if\(ON\)') { throw "OFF build must not enable Tracy" }
+      - name: ON configure generates Tracy dependency (package config artifact)
+        shell: pwsh
+        run: |
+          cmake -S . -B build-on -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX=prefix-on -DWITH_TELEMETRY=ON `
+            -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON `
+            -DCMAKE_PREFIX_PATH="$PWD/cmake/ci-stub" `
+            -DTracy_DIR="$PWD/cmake/ci-stub" `
+            -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DVCPKG_MANIFEST_MODE=OFF
+          $cfg = Get-Content build-on/carbon-coreConfig.cmake -Raw
+          if ($cfg -notmatch 'find_dependency\(Tracy') { throw "ON configure must declare Tracy" }
+          if ($cfg -match 'if\(OFF\)') { throw "ON configure must not wrap Tracy in OFF" }
