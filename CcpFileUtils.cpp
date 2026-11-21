@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #if _WIN32
+#include <shlwapi.h>
 #else
 #include <dirent.h>
 #include <errno.h>

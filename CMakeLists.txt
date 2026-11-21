@@ -29,6 +29,9 @@ endif()
 project(CcpCore)
 
 set(CCP_TOOLSET ${CMAKE_GENERATOR_TOOLSET})
+if(NOT CCP_TOOLSET AND MSVC_TOOLSET_VERSION)
+    set(CCP_TOOLSET "v${MSVC_TOOLSET_VERSION}")
+endif()
 
 include(GenerateExportHeader)
 
@@ -155,6 +158,12 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     if(BUILD_TESTING)
         add_subdirectory(tests)
     endif()
+    if(WIN32)
+        add_executable(CoreConversionSmoke tools/CoreConversionSmoke.cpp)
+        target_link_libraries(CoreConversionSmoke PRIVATE CcpCore)
+        add_dependencies(CoreConversionSmoke CcpCore)
+        target_include_directories(CoreConversionSmoke PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
 endif()
 
 target_compile_definitions(CcpCore PRIVATE PLATFORM_TOOLSET=${CCP_TOOLSET})
@@ -163,6 +172,7 @@ target_compile_definitions(CcpCore PUBLIC CCP_ASSERT_ENABLED=$<NOT:$<CONFIG:Rele
 if(WIN32)
     # Prevent min/max macros being defined (in windows.h) that conflict with std::min/max ones.
     target_compile_definitions(CcpCore PRIVATE NOMINMAX)
+    target_link_libraries(CcpCore PRIVATE shlwapi)
 endif()
 
 target_include_directories(CcpCore
@@ -278,8 +288,14 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
                 DESTINATION ${CMAKE_INSTALL_PREFIX}/share/carbon-core
                 FILE carbon-core.cmake
         )
+        include(CMakePackageConfigHelpers)
+        configure_package_config_file(
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/carbon-coreConfig.cmake.in
+            ${CMAKE_CURRENT_BINARY_DIR}/carbon-coreConfig.cmake
+            INSTALL_DESTINATION share/carbon-core
+        )
         install(
-                FILES carbon-coreConfig.cmake
+                FILES ${CMAKE_CURRENT_BINARY_DIR}/carbon-coreConfig.cmake
                 DESTINATION ${CMAKE_INSTALL_PREFIX}/share/carbon-core
         )
     endif()
