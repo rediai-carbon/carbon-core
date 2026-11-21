@@ -158,6 +158,12 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     if(BUILD_TESTING)
         add_subdirectory(tests)
     endif()
+    if(WIN32)
+        add_executable(CoreConversionSmoke tools/CoreConversionSmoke.cpp)
+        target_link_libraries(CoreConversionSmoke PRIVATE CcpCore)
+        add_dependencies(CoreConversionSmoke CcpCore)
+        target_include_directories(CoreConversionSmoke PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
 endif()
 
 target_compile_definitions(CcpCore PRIVATE PLATFORM_TOOLSET=${CCP_TOOLSET})
@@ -282,8 +288,14 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
                 DESTINATION ${CMAKE_INSTALL_PREFIX}/share/carbon-core
                 FILE carbon-core.cmake
         )
+        include(CMakePackageConfigHelpers)
+        configure_package_config_file(
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/carbon-coreConfig.cmake.in
+            ${CMAKE_CURRENT_BINARY_DIR}/carbon-coreConfig.cmake
+            INSTALL_DESTINATION share/carbon-core
+        )
         install(
-                FILES carbon-coreConfig.cmake
+                FILES ${CMAKE_CURRENT_BINARY_DIR}/carbon-coreConfig.cmake
                 DESTINATION ${CMAKE_INSTALL_PREFIX}/share/carbon-core
         )
     endif()
