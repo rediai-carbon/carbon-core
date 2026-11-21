@@ -16,7 +16,7 @@ CARBON_CORE_API std::string WideToUTF8( const wchar_t* wideString );
 CARBON_CORE_API std::string WideToUTF8( const std::wstring& wideString );
 
 #if _WIN32
-#if __has_include(<atlbase.h>)
+#if !defined(CARBON_CORE_FORCE_WIN32_STRING_CONVERSION) && __has_include(<atlbase.h>)
 #include <atlbase.h>
 #else
 // Build Tools installs can omit ATL. These match the two-argument ATL

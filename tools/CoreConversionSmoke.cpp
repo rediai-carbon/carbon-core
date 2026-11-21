@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <string>
 
+// Exercise the Win32 fallback even when the compiler ships ATL headers.
+#define CARBON_CORE_FORCE_WIN32_STRING_CONVERSION 1
 #include "StringConversions.h"
 
 namespace
@@ -14,6 +16,7 @@ bool Expect( bool cond, const char* step )
 
 int main()
 {
+	std::printf( "CORE_CONVERSION_SMOKE_START\n" );
 	std::wstring wide = L"ascii-roundtrip";
 	CW2A narrowUtf8( wide.c_str(), CP_UTF8 );
 	if( !Expect( narrowUtf8 && narrowUtf8[0] != '\0', "CW2A_utf8" ) )
