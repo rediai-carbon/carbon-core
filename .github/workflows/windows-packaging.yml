@@ -26,7 +26,8 @@ jobs:
             -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DVCPKG_MANIFEST_MODE=OFF
           cmake --build build-off --target install
           $cfg = Get-Content prefix-off/share/carbon-core/carbon-coreConfig.cmake -Raw
-          if ($cfg -match '(?m)^find_dependency\(Tracy') { throw "OFF build must not unconditionally require Tracy" }
+          if ($cfg -notmatch 'if\(OFF\)') { throw "OFF install must gate Tracy behind if(OFF)" }
+          if ($cfg -match 'if\(ON\)') { throw "OFF install must not use if(ON) for Tracy" }
       - name: ON configure generates Tracy dependency (package config artifact)
         shell: pwsh
         run: |
@@ -37,4 +38,4 @@ jobs:
             -DTracy_DIR="$PWD/cmake/ci-stub" `
             -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DVCPKG_MANIFEST_MODE=OFF
           $cfg = Get-Content build-on/carbon-coreConfig.cmake -Raw
-          if ($cfg -notmatch '(?m)^find_dependency\(Tracy') { throw "ON configure must declare Tracy" }
+          if ($cfg -notmatch 'if\(ON\)[\s\S]*find_dependency\(Tracy') { throw "ON configure must declare Tracy behind if(ON)" }
