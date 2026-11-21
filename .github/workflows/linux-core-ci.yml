@@ -46,6 +46,22 @@ jobs:
           repository: rediai-carbon/carbon-linux-images
           ref: ${{ env.CARBON_LINUX_IMAGES_SHA }}
           path: carbon-linux-images
+      - name: Use ssh-keyscan for GitHub host keys
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("carbon-linux-images/build/gcc/Containerfile")
+          text = path.read_text()
+          marker = "RUN curl -fsSL https://api.github.com/meta"
+          if marker not in text:
+              raise SystemExit("Containerfile GitHub metadata fetch not found")
+          start = text.index(marker)
+          end = text.index("> /etc/ssh/ssh_known_hosts", start)
+          end = text.index("\n", end)
+          text = text[:start] + "RUN ssh-keyscan -t rsa,ecdsa,ed25519 github.com > /etc/ssh/ssh_known_hosts" + text[end:]
+          path.write_text(text)
+          print("CONTAINERFILE_GITHUB_KEYS_PATCHED")
+          PY
       - name: Build GCC buildenv image
         run: |
           docker build \
