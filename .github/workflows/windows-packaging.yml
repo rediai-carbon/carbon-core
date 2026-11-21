@@ -14,6 +14,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
       - name: OFF install package config
         shell: pwsh
         run: |
@@ -23,7 +26,7 @@ jobs:
             -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DVCPKG_MANIFEST_MODE=OFF
           cmake --build build-off --target install
           $cfg = Get-Content prefix-off/share/carbon-core/carbon-coreConfig.cmake -Raw
-          if ($cfg -match 'if\(ON\)') { throw "OFF build must not enable Tracy" }
+          if ($cfg -match '(?m)^find_dependency\(Tracy') { throw "OFF build must not unconditionally require Tracy" }
       - name: ON configure generates Tracy dependency (package config artifact)
         shell: pwsh
         run: |
@@ -34,5 +37,4 @@ jobs:
             -DTracy_DIR="$PWD/cmake/ci-stub" `
             -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DVCPKG_MANIFEST_MODE=OFF
           $cfg = Get-Content build-on/carbon-coreConfig.cmake -Raw
-          if ($cfg -notmatch 'find_dependency\(Tracy') { throw "ON configure must declare Tracy" }
-          if ($cfg -match 'if\(OFF\)') { throw "ON configure must not wrap Tracy in OFF" }
+          if ($cfg -notmatch '(?m)^find_dependency\(Tracy') { throw "ON configure must declare Tracy" }
