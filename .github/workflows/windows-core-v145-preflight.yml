@@ -42,7 +42,7 @@ jobs:
             $color = $commands | Select-String -Pattern "CcpColorConstants.cpp" | Select-Object -First 1
             if (-not $color) { throw "$Name did not compile CcpColorConstants.cpp" }
             Write-Output "${Name}_COMPILE=$color"
-            if ($color -notmatch "/std:c\+\+(17|20|23|latest)") {
+            if ($color -notmatch "[/-]std:c\+\+(17|20|23|latest)") {
               throw "$Name compile command did not select C++17 or later"
             }
             cmake --build "build-$Name" --target install
@@ -92,7 +92,7 @@ jobs:
           $commands = & ninja -C consumer-build -t commands
           $line = $commands | Select-String -Pattern "consumer.cpp" | Select-Object -First 1
           Write-Output "CONSUMER_COMPILE=$line"
-          if ($line -notmatch "/std:c\+\+(17|20|23|latest)") {
+          if ($line -notmatch "[/-]std:c\+\+(17|20|23|latest)") {
             throw "Downstream consumer did not inherit C++17 or later"
           }
           $env:PATH = "$PWD\prefix-release\bin;$env:PATH"
