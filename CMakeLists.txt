@@ -67,6 +67,9 @@ set(SRC_FILES
 )
 
 add_library(CcpCore SHARED ${SRC_FILES})
+# Public headers use std::string_view. MSVC's default language mode does not
+# provide it, and host triplets do not apply the v145 toolchain standard.
+target_compile_features(CcpCore PUBLIC cxx_std_17)
 
 get_target_property(_SOURCES CcpCore SOURCES)
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}"

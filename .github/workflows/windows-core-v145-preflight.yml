@@ -1,0 +1,100 @@
+name: windows-core-v145-preflight
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  language-mode:
+    name: v145 C++17 contract
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Enter the v145 toolset
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+          toolset: 14.52
+
+      - name: Build Release and Debug without an external language standard
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $cl = (Get-Command cl.exe).Source
+          Write-Output "CL=$cl"
+          if ($cl -notmatch "\\14\.52\.") { throw "Compiler is not the v145 14.52 toolset: $cl" }
+
+          function Build-Core([string]$Name, [string]$Config) {
+            cmake -S . -B "build-$Name" -G Ninja "-DCMAKE_BUILD_TYPE=$Config" `
+              "-DCMAKE_INSTALL_PREFIX=prefix-$Name" `
+              -DWITH_TELEMETRY=OFF -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF `
+              -DVCPKG_MANIFEST_MODE=OFF
+            if ($LASTEXITCODE -ne 0) { throw "$Name configure failed" }
+            cmake --build "build-$Name" --target CcpCore CoreConversionSmoke
+            if ($LASTEXITCODE -ne 0) { throw "$Name build failed" }
+            $commands = & ninja -C "build-$Name" -t commands
+            $color = $commands | Select-String -Pattern "CcpColorConstants.cpp" | Select-Object -First 1
+            if (-not $color) { throw "$Name did not compile CcpColorConstants.cpp" }
+            Write-Output "${Name}_COMPILE=$color"
+            if ($color -notmatch "/std:c\+\+(17|20|23|latest)") {
+              throw "$Name compile command did not select C++17 or later"
+            }
+            cmake --build "build-$Name" --target install
+            if ($LASTEXITCODE -ne 0) { throw "$Name install failed" }
+            $exported = Get-Content "prefix-$Name/share/carbon-core/carbon-core.cmake" -Raw
+            if ($exported -notmatch "cxx_std_17") {
+              throw "$Name exported target does not carry cxx_std_17"
+            }
+            $config = Get-Content "prefix-$Name/share/carbon-core/carbon-coreConfig.cmake" -Raw
+            if ($config -notmatch "if\(OFF\)") { throw "$Name telemetry-off package config lost its Tracy gate" }
+            if ($config -match "if\(ON\)") { throw "$Name telemetry-off package config enables Tracy" }
+            $env:PATH = "$(Join-Path (Get-Location) "build-$Name");$env:PATH"
+            & ".\build-$Name\CoreConversionSmoke.exe"
+            if ($LASTEXITCODE -ne 0) { throw "$Name CoreConversionSmoke failed" }
+          }
+
+          Build-Core "release" "Release"
+          Build-Core "debug" "Debug"
+
+      - name: Compile a downstream consumer against the installed target
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path consumer | Out-Null
+          @'
+          #include "CcpColorConstants.h"
+          #include <cstdio>
+          int main()
+          {
+              std::string_view name = CcpColorToString(CcpColor::White);
+              std::printf("CORE_CONSUMER %.*s\n", static_cast<int>(name.size()), name.data());
+              return name.empty() ? 1 : 0;
+          }
+          '@ | Set-Content -Encoding ascii consumer\consumer.cpp
+          @'
+          cmake_minimum_required(VERSION 3.19)
+          project(coreconsumer LANGUAGES CXX)
+          find_package(carbon-core CONFIG REQUIRED)
+          add_executable(consumer consumer.cpp)
+          target_link_libraries(consumer PRIVATE CcpCore)
+          '@ | Set-Content -Encoding ascii consumer\CMakeLists.txt
+          cmake -S consumer -B consumer-build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$PWD/prefix-release"
+          if ($LASTEXITCODE -ne 0) { throw "consumer configure failed" }
+          cmake --build consumer-build
+          if ($LASTEXITCODE -ne 0) { throw "consumer build failed" }
+          $commands = & ninja -C consumer-build -t commands
+          $line = $commands | Select-String -Pattern "consumer.cpp" | Select-Object -First 1
+          Write-Output "CONSUMER_COMPILE=$line"
+          if ($line -notmatch "/std:c\+\+(17|20|23|latest)") {
+            throw "Downstream consumer did not inherit C++17 or later"
+          }
+          $env:PATH = "$PWD\prefix-release\bin;$env:PATH"
+          & .\consumer-build\consumer.exe
+          if ($LASTEXITCODE -ne 0) { throw "consumer execution failed" }
